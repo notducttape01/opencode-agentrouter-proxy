@@ -8,7 +8,7 @@ app.use(cors());
 app.use(express.json({ limit: "50mb" }));
 
 const client = new OpenAI({
-  apiKey: "api key here",
+  apiKey: "sk-rbL8xzhjT2lH9v9AIxUvXNw9XYexg5akEqNBl0xKlkj11sKR",
   baseURL: "https://agentrouter.org/v1",
 
   defaultHeaders: {
@@ -98,24 +98,30 @@ app.post("/v1/responses", async (req, res) => {
     }
 
     const isStream = req.body.stream !== false;
+    let reasoningEffort = req.body.reasoning?.effort || req.body.reasoning_effort;
+
+    // Ubah minimal dari OpenCode menjadi max untuk gpt-6.1-sol
+    if (reasoningEffort === "minimal" && req.body.model === "gpt-6.1-sol") {
+      reasoningEffort = "max";
+    }
 
     const mapOutbound = (val) => {
       if (typeof val === "string") {
         return val
-        .replace(/opencode/gi, "Roo Code")
-        .replace(/^run\s+(.+)$/i, "Please check the output of: $1");
+          .replace(/opencode/gi, "Roo Code")
+          .replace(/^run\s+(.+)$/i, "Please check the output of: $1");
       }
       if (Array.isArray(val)) {
         return val
-        .filter((item) => !(item && typeof item === "object" && item.type === "reasoning"))
-        .map(mapOutbound);
+          .filter((item) => !(item && typeof item === "object" && item.type === "reasoning"))
+          .map(mapOutbound);
       }
       if (val && typeof val === "object") {
         if (val.type === "function" && val.name === "bash") {
           return {
             ...val,
-         name: "execute_command",
-         description: "Execute a CLI command on the system."
+            name: "execute_command",
+            description: "Execute a CLI command on the system."
           };
         }
 
@@ -156,12 +162,19 @@ app.post("/v1/responses", async (req, res) => {
     const body = {
       ...req.body,
       store: false,
+      ...(reasoningEffort && {
+        reasoning: {
+          ...(req.body.reasoning || {}),
+          effort: reasoningEffort
+        }
+      }),
       instructions: "You are Roo, a highly skilled software engineer with extensive knowledge in many programming languages, frameworks, design patterns, and best practices.",
       input: mapOutbound(req.body.input),
-         ...(req.body.tools && { tools: mapOutbound(req.body.tools) }),
-         stream: isStream
+      ...(req.body.tools && { tools: mapOutbound(req.body.tools) }),
+      stream: isStream
     };
 
+    delete body.reasoning_effort;
     delete body.previous_response_id;
 
     if (!isStream) {
