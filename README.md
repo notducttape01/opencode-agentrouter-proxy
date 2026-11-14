@@ -69,7 +69,7 @@ AgentRouter offers an OpenAI-compatible API, but OpenCode needs providers regist
 1. **Proxy** starts locally and exposes an OpenAI-compatible REST API
 2. **OpenCode** is configured with `@ai-sdk/openai-compatible` pointing to the proxy
 3. Chat requests are streamed through the proxy → AgentRouter → back to OpenCode
-
+4. **In this updated proxy, since AgentRouter API did not accept "minimal" variant, and OpenCode does not have "max" variant showed up, the proxy will forward "minimal" effort as "max" effort to cover the missing "max" variant.**
 ---
 ## Setup
 
